@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="index.css">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="tituloDividas"></title>
+</head>
+<body>
+    <h1>Minhas Dívidas</h1>
+    <h2>Meu Salário: R$ <span id="salario">1.320,00</span></h2>
+    <h2>Dinheiro Restante: R$ <span id="dinheiroRestante">1.320,00</span></h2>
+    <h2>Valor da Dívida: <span id="valorTotal">R$ NaN</span></h2>
+
+    <div class="groupForm">
+        <input type="text" id="inputDivida" placeholder="Nome da Dívida">
+        <input type="number" id="inputValor" placeholder="Valor da Dívida">
+        <div class="groupButton">
+            <button id="btnAdicionarDivida">Adicionar Dívida</button>
+            <button id="btnSalvarSalario">Editar Salário</button>
+        </div>
+    </div>
+
+    <table id="tabela">
+        <thead>
+            <tr>
+                <th>Dívida</th>
+                <th id="valor-coluna">Valor</th>
+                <th>Ação</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    
+    
+    
+    <script src="https://code.jquery.com/jquery-3.7.0.js" integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=" crossorigin="anonymous"></script>
+    <script>
+        $(document).ready(function() {
+            var total = 0;
+            var dinheiroRestante = document.getElementById('dinheiroRestante');
+            var dividas = [];
+
+            // Define o título da página com base no mês atual
+            var dataAtual = new Date();
+            var mesAtual = dataAtual.toLocaleString('pt', { month: 'long' });
+            document.getElementById('tituloDividas').textContent = "Mês " + mesAtual + " | Minhas Dívidas";
+
+            // Carrega as dívidas salvas no armazenamento local, se houver
+            if (localStorage.getItem('dividas')) {
+                dividas = JSON.parse(localStorage.getItem('dividas'));
+
+                // Adiciona as dívidas na tabela
+                for (var i = 0; i < dividas.length; i++) {
+                    var divida = dividas[i];
+                    adicionarDividaNaTabela(divida.nome, divida.valor);
+                }
+            }
+
+            // Carrega o salário salvo no armazenamento local, se houver
+            if (localStorage.getItem('salario')) {
+                var salarioSalvo = parseFloat(localStorage.getItem('salario'));
+                $('#salario').text(salarioSalvo.toFixed(2));
+            }
+
+            // Calcula o valor total das dívidas
+            calcularValorTotal();
+
+            $('#btnAdicionarDivida').click(function() {
+                var nomeDivida = $('#inputDivida').val();
+                var valorDivida = parseFloat($('#inputValor').val());
+
+                if (!isNaN(valorDivida)) {
+                    adicionarDividaNaTabela(nomeDivida, valorDivida);
+
+                    // Salva a nova dívida no armazenamento local
+                    dividas.push({ nome: nomeDivida, valor: valorDivida });
+                    localStorage.setItem('dividas', JSON.stringify(dividas));
+
+                    $('#inputDivida').val('');
+                    $('#inputValor').val('');
+
+                    calcularValorTotal();
+                }
+            });
+
+            $(document).on('click', '.btnPagarDivida', function() {
+                var row = $(this).closest('tr');
+                var valorStr = row.find('td:nth-child(2)').text().replace('R$', '').replace(',', '.');
+                var valor = parseFloat(valorStr);
+
+                if (!isNaN(valor)) {
+                    total -= valor;
+                    $('#valorTotal').text('R$ ' + total.toFixed(2));
+
+                    // Remove a dívida da tabela
+                    row.remove();
+
+                    // Remove a dívida do armazenamento local
+                    var nomeDivida = row.find('td:nth-child(1)').text();
+                    dividas = dividas.filter(function(divida) {
+                        return divida.nome !== nomeDivida;
+                    });
+                    localStorage.setItem('dividas', JSON.stringify(dividas));
+                }
+            });
+
+            $('#btnSalvarSalario').click(function() {
+                var novoSalario = parseFloat(prompt('Digite o novo valor do salário:').replace(',', '.'));
+
+                if (!isNaN(novoSalario)) {
+                    $('#salario').text(novoSalario.toFixed(2));
+
+                    // Salva o novo salário no armazenamento local
+                    localStorage.setItem('salario', novoSalario.toFixed(2));
+
+                    calcularValorTotal();
+                }
+            });
+
+            function adicionarDividaNaTabela(nomeDivida, valorDivida) {
+                var newRow = $('<tr>');
+                var nomeCell = $('<td>').text(nomeDivida);
+                var valorCell = $('<td>').text('R$ ' + valorDivida.toFixed(2));
+                var btnCell = $('<td>').append($('<button>').addClass('btnPagarDivida').text('Dívida Paga'));
+
+                newRow.append(nomeCell, valorCell, btnCell);
+                $('#tabela tbody').append(newRow);
+            }
+
+            function calcularValorTotal() {
+                var salario = parseFloat($('#salario').text().replace(',', '.'));
+                
+                total = 0;
+                $('#tabela tbody tr').each(function() {
+                    var valorStr = $(this).find('td:nth-child(2)').text().replace('R$', '').replace(',', '.');
+                    var valor = parseFloat(valorStr);
+                    
+                    if (!isNaN(valor)) {
+                        total += valor;
+                    }
+                });
+
+                $('#valorTotal').text('R$ ' + total.toFixed(2));
+
+                if (total > salario) {
+                    $('#valorTotal').css('color', '#ff5a5a');
+                } else {
+                    $('#valorTotal').css('color', 'white');
+                }
+                dinheiroRestante.innerHTML = parseFloat(salario - total).toFixed(2);
+            }
+        });
+    </script>
+</body>
+</html>
